@@ -1,0 +1,18 @@
+@startuml
+
+state "Laser Adjustment" as laser
+state "Peers Connection" as connection
+state "Ready" as ready
+state "Run" as run
+state "Finish" as finish
+
+[*] --> connection
+connection --> laser : communication established
+laser --> ready : both lasers ok
+ready --> run : start laser detection
+ready --> connection : connection lost
+run --> finish : finish laser detection
+run --> finish : timeout
+finish --> ready : timeout
+
+@enduml
