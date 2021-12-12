@@ -11,7 +11,7 @@ LaserDetector::LaserDetector(byte out, byte in) {
 
 void LaserDetector::init() {
     pinMode(_out, OUTPUT);
-    // Serial.begin(9600);
+    Serial.begin(9600);
 }
 
 boolean LaserDetector::isObjectDetected() {
@@ -20,7 +20,8 @@ boolean LaserDetector::isObjectDetected() {
         digitalWrite(_out, HIGH);                
         delayMicroseconds(10);
         unsigned int valueOn = analogRead(_in);
-        
+        Serial.println(valueOn);
+
         digitalWrite(_out, LOW);
         delayMicroseconds(90);
         unsigned int valueOff = analogRead(_in);
