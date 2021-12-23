@@ -9,6 +9,9 @@ class LaserDetector {
     void init();
     boolean isObjectDetected();
     boolean isLaserOffValid();
+    boolean isLaserAdjusted();
+    void ledOn();
+    void ledOff();
 
    private:
     byte _out;
