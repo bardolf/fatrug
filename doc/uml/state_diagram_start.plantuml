@@ -1,0 +1,21 @@
+@startuml
+
+title Start Device
+
+state "STATE_LASER_ADJUSTING" as laser
+state "STATE_PEERS_CONNECTING" as connection
+state "STATE_READY" as ready
+state "STATE_RUN" as run
+state "STATE_FINISH" as finish
+
+[*] --> connection
+connection --> laser : communication\nestablished
+laser --> ready : laser ok
+ready --> run : laser\ninterrupted
+ready --> connection : connection lost
+run --> finish : msg from \nfinish device
+run --> ready : button pressed\nshortly
+finish --> ready : timeout
+finish --> ready : button pressed\nshortly
+
+@enduml
