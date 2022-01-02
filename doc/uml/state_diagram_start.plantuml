@@ -2,7 +2,8 @@
 
 title Start Device
 
-state "STATE_LASER_ADJUSTING" as laser
+state "STATE_LASER_1_ADJUSTING" as laser
+state "STATE_LASER_2_ADJUSTING" as laser2
 state "STATE_PEERS_CONNECTING" as connection
 state "STATE_READY" as ready
 state "STATE_RUN" as run
@@ -10,12 +11,14 @@ state "STATE_FINISH" as finish
 
 [*] --> connection
 connection --> laser : communication\nestablished
-laser --> ready : laser ok
+laser --> laser2 : laser1 ok
+laser2 --> ready : msg (laser2 ok)
+ready --> laser: laser unavailable
 ready --> run : laser\ninterrupted
 ready --> connection : connection lost
 run --> finish : msg from \nfinish device
-run --> ready : button pressed\nshortly
+run --> ready : button\npressed
 finish --> ready : timeout
-finish --> ready : button pressed\nshortly
+finish --> ready : button\npressed
 
 @enduml

@@ -53,20 +53,15 @@ void loopStartDevice() {
             Serial.println("Start");
             currentState = STATE_PEERS_CONNECTING;
             break;
-        case STATE_PEERS_CONNECTING:
+        case STATE_PEERS_CONNECTING:        
             sevenSegments.showMessage("CONN");
-            
-
-
-            if (millis() - changedStateMillis > 2000) {
+            if (communicator.isCommunicationEstablished()) {
                 currentState = STATE_LASER_ADJUSTING;
                 changedStateMillis = millis();
-                Serial.println("Laser adjustment");
             }
             break;
         case STATE_LASER_ADJUSTING:
-            sevenSegments.showMessage("LASE");
-
+            sevenSegments.showMessage("LAS1");
             laserDetector.ledOn();
             if (laserDetector.isLaserAdjusted()) {
                 currentState = STATE_READY;
@@ -111,13 +106,35 @@ void loopFinishDevice() {
             Serial.println("Start");
             currentState = STATE_PEERS_CONNECTING;
             break;
+        case STATE_PEERS_CONNECTING:
+            sevenSegments.showMessage("CONN");
+            if (communicator.isCommunicationEstablished()) {
+                currentState = STATE_LASER_ADJUSTING;
+                changedStateMillis = millis();  
+            }
         default:
             break;
     }
 }
 
+/**
+ * Specifies whether is the start (master) device or not.
+ * Usually based on harware configuration.
+ */
+boolean isStartDevice() {
+    return DEVICE_TYPE == 0;
+}
+
+/**
+ * Specifies whether is the finish (slave) device or not.
+ * Usually based on harware configuration.
+ */
+boolean isFinishDevice() {
+    return DEVICE_TYPE == 1;
+}
+
 void loop() {
-    if (isStartDevice) {
+    if (isStartDevice()) {
         loopStartDevice();
     } else {
         loopFinishDevice();
@@ -143,21 +160,7 @@ void loop() {
     // delay(1000);
 }
 
-/**
- * Specifies whether is the start (master) device or not.
- * Usually based on harware configuration.
- */
-boolean isStartDevice() {
-    return true;
-}
 
-/**
- * Specifies whether is the finish (slave) device or not.
- * Usually based on harware configuration.
- */
-boolean isFinishDevice() {
-    return false;
-}
 
 // boolean isMessageFromPeerAvailable() {
 
