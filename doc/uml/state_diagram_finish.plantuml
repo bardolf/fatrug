@@ -2,20 +2,21 @@
 
 title Finish Device
 
-state "STATE_LASER_ADJUSTING" as laser
 state "STATE_PEERS_CONNECTING" as connection
 state "STATE_REACT_TO_MESSAGE" as react
+state "STATE_LASER_1_ADJUSTMENT" as laser1
+state "STATE_LASER_2_ADJUSTMENT" as laser2
+state "STATE_STOPWATCH" as stopwatch
 state "STATE_PROCESS_MESSAGE" as process
-state "STATE_CHECK_SENSORS" as check
 
 [*] --> connection
-connection --> laser : communication\nestablished
-laser --> react : laser ok
+connection --> react : communication\nestablished
 react --> process : msg available
-process --> check
-react --> check : no message
-check --> react
-check --> laser : laser unavailable
-check --> connection : connection lost
+process --> laser1 : msg (laser 1\nadjustment)
+process --> laser2 : msg(laser 2\nadjustment requested)
+process --> stopwatch : msg(stopwatch\nrequested)
+laser1 --> react : msg(laser 1\nadjusted)
+laser2 --> react : laser 2\nadjusted
+stopwatch --> react : laser 2\ninterrupted
 
 @enduml

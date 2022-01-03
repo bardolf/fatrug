@@ -13,8 +13,8 @@ state "STATE_FINISH" as finish
 connection --> laser : communication\nestablished
 laser --> laser2 : laser1 ok
 laser2 --> ready : msg (laser2 ok)
-ready --> laser: laser unavailable
-ready --> run : laser\ninterrupted
+ready --> laser: laser 1 unavailable
+ready --> run : laser 1\ninterrupted
 ready --> connection : connection lost
 run --> finish : msg from \nfinish device
 run --> ready : button\npressed

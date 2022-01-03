@@ -8,13 +8,17 @@
 #define ESTABLISH_INTERVAL_MS 500
 #define ESTABLISH_START_MESSAGE "EST_START"
 #define ESTABLISH_FINISH_MESSAGE "EST_FINISH"
-#define PING_MESSAGE "PING"
-#define PONG_MESSAGE "PONG"
+#define PING_MESSAGE_REQUEST "PING"
+#define PING_MESSAGE_RESPONSE "PONG"
+#define LASER_1_ADJUSTMENT_INFO "LASER1_ADJ_REQ"
+#define LASER_1_ADJUSTED_INFO "LASER1_ADJ_RES"
+#define LASER_2_ADJUSTMENT_REQUEST "LASER2_REQ"
+#define LASER_2_ADJUSTMENT_RESPONSE "LASER2_ADJUSTED"
 
 RF24 radio(7, 8);  // CE, CSN
 const byte adresss[][6] = {"00001", "00002"};
 const byte channel = 125;
-char buffer[32];
+char buffer[16];
 
 Communicator::Communicator(boolean startDevice) {
     _startDevice = startDevice;
@@ -37,7 +41,7 @@ void Communicator::init() {
     }
 
     radio.setAutoAck(false);
-    radio.setRetries(2,1);  
+    radio.setRetries(2, 1);
     radio.setPayloadSize(16);
     radio.setPALevel(RF24_PA_MAX);
     radio.setDataRate(RF24_2MBPS);
@@ -45,7 +49,7 @@ void Communicator::init() {
     radio.startListening();
 }
 
-void Communicator::send(const char* message) {    
+void Communicator::send(const char* message) {
     radio.stopListening();
     radio.write(message, strlen(message));
     radio.startListening();
@@ -55,8 +59,13 @@ boolean Communicator::isMessageAvailable() {
     return radio.available();
 }
 
+long Communicator::getLastMessageMillis() {
+    return _lastMessageReceivedMillis;
+}
+
 void Communicator::read(void* buf, uint8_t len) {
     radio.read(buf, len);
+    _lastMessageReceivedMillis = millis();
 }
 
 boolean Communicator::isCommunicationEstablished() {
@@ -73,7 +82,7 @@ boolean Communicator::isCommunicationEstablished() {
         }
     } else {
         if (isMessageAvailable()) {
-            read(&buffer, sizeof(buffer));            
+            read(&buffer, sizeof(buffer));
             if (strcmp(buffer, ESTABLISH_START_MESSAGE) == 0) {
                 send(ESTABLISH_FINISH_MESSAGE);
                 return true;
@@ -83,7 +92,50 @@ boolean Communicator::isCommunicationEstablished() {
     return false;
 }
 
-void Communicator::sendPing() {
-    send(PING_MESSAGE);
+void Communicator::sendPingRequest() {
+    send(PING_MESSAGE_REQUEST);
 }
 
+boolean Communicator::isPingRequest(const char* msg) {
+    return strcmp(msg, PING_MESSAGE_REQUEST) == 0;
+}
+
+void Communicator::sendPingResponse() {
+    send(PING_MESSAGE_RESPONSE);
+}
+
+boolean Communicator::isPingResponse(const char* msg) {
+    return strcmp(msg, PING_MESSAGE_RESPONSE) == 0;
+}
+
+void Communicator::sendLaser1AdjustmentInfo() {
+    send(LASER_1_ADJUSTMENT_INFO);
+}
+
+boolean Communicator::isLaser1AdjustmentInfo(const char* msg) {
+    return strcmp(msg, LASER_1_ADJUSTMENT_INFO) == 0;
+}
+
+void Communicator::sendLaser1AdjustedInfo() {
+    send(LASER_1_ADJUSTED_INFO);
+}
+
+boolean Communicator::isLaser1AdjustedInfo(const char* msg) {
+    return strcmp(msg, LASER_1_ADJUSTED_INFO) == 0;
+}
+
+void Communicator::sendLaser2AdjustmentRequest() {
+    send(LASER_2_ADJUSTMENT_REQUEST);
+}
+
+boolean Communicator::isLaser2AdjustmentRequest(const char* msg) {
+    return strcmp(msg, LASER_2_ADJUSTMENT_REQUEST) == 0;
+}
+
+void Communicator::sendLaser2AdjustmentResponse() {
+    send(LASER_2_ADJUSTMENT_RESPONSE);
+}
+
+boolean Communicator::isLaser2AdjustmentResponse(const char* msg) {
+    return strcmp(msg, LASER_2_ADJUSTMENT_RESPONSE) == 0;
+}
