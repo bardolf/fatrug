@@ -25,6 +25,17 @@ class Communicator {
     boolean isLaser2AdjustmentRequest(const char* msg);
     void sendLaser2AdjustmentResponse();
     boolean isLaser2AdjustmentResponse(const char* msg);
+    void sendStateReadyRequest();
+    boolean isStateReadyRequest(const char* msg);
+    void sendStateRunRequest();
+    boolean isStateRunRequest(const char* msg);
+    void sendStateFinishRequest(long finishTime);
+    boolean isStateFinishRequest(const char* msg);
+    long getFinishTime(const char* msg);
+    void sendStateFinishEndRequest();
+    boolean isStateFinishEndRequest(const char* msg);
+    void sendLaser2Interrupted();
+    boolean isLaser2Interrupted(const char* msg);
 
    private:
     boolean _startDevice;

@@ -5,6 +5,8 @@
 #include "LaserDetector.h"
 #include "SevenSegments.h"
 
+#define DEVICE_TYPE 0 // defines whether is it start (0) or finish (1) device
+
 #define STATE_START 0
 #define STATE_LASER_1_ADJUSTMENT 1
 #define STATE_LASER_2_ADJUSTMENT 2
@@ -12,7 +14,7 @@
 #define STATE_READY 4
 #define STATE_RUN 5
 #define STATE_FINISH 6
-#define STATE_REACT_TO_MESSAGE 7
+#define STATE_WAIT_FOR_MESSAGE 7
 #define STATE_PROCESS_MESSAGE 8
 #define STATE_CHECK_SENSORS 9
 
@@ -27,8 +29,6 @@
 /* TIME CONFIGURATION */
 #define PING_INTERVAL_MS 500
 #define UPDATE_LED_INTERVAL_MS 4
-
-#define DEVICE_TYPE 1  // defines whether is it start (0) or finish (1) device
 
 /* GLOBAL VARIABLES */
 unsigned int currentState = STATE_START;
@@ -70,6 +70,7 @@ void loopStartDevice() {
         case STATE_LASER_1_ADJUSTMENT:
             sevenSegments.showMessage("LAS1");
             if (laserDetector.isLaserAdjusted()) {
+                Serial.println("Laser 1 adjusted.");
                 currentState = STATE_LASER_2_ADJUSTMENT;
                 changedStateMillis = millis();
                 communicator.sendLaser1AdjustedInfo();
@@ -83,32 +84,43 @@ void loopStartDevice() {
                 if (communicator.isLaser2AdjustmentResponse(receivedMessage)) {
                     Serial.println("Laser 2 adjusted.");
                     currentState = STATE_READY;
+                    laserDetector.ledOn();
                     changedStateMillis = millis();
+                    communicator.sendStateReadyRequest();
                 }
             }
             break;
         case STATE_READY:
             sevenSegments.showTime(measuredTimeMillis);
-            if (millis() - changedStateMillis > 2000) {
+            if (laserDetector.isSensorLow()) {
                 currentState = STATE_RUN;
+                laserDetector.ledOff();
                 runStartMillis = millis();
                 changedStateMillis = millis();
+                communicator.sendStateRunRequest();
             }
             break;
-        case STATE_RUN:            
+        case STATE_RUN:
             measuredTimeMillis = millis() - runStartMillis;
             sevenSegments.showTime(measuredTimeMillis);
-            if (millis() - changedStateMillis > 10000) {
-                currentState = STATE_FINISH;
-                changedStateMillis = millis();
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isLaser2Interrupted(receivedMessage)) {
+                    currentState = STATE_FINISH;                    
+                    changedStateMillis = millis();
+                    communicator.sendStateFinishRequest(measuredTimeMillis);
+                }
             }
             break;
-        case STATE_FINISH:            
+        case STATE_FINISH:
             sevenSegments.showTime(measuredTimeMillis);
-            if (millis() - changedStateMillis > 10000) {
+            if (millis() - changedStateMillis > 10000 || button.isPressed()) {
                 currentState = STATE_READY;
+                laserDetector.ledOn();
                 measuredTimeMillis = 0;
                 changedStateMillis = millis();
+                communicator.sendStateFinishEndRequest();
+                communicator.sendStateReadyRequest();
             }
             break;
         default:
@@ -127,13 +139,13 @@ void loopFinishDevice() {
         case STATE_PEERS_CONNECTION:
             sevenSegments.showMessage("CONN");
             if (communicator.isCommunicationEstablished()) {
-                currentState = STATE_REACT_TO_MESSAGE;
+                currentState = STATE_WAIT_FOR_MESSAGE;
                 changedStateMillis = millis();
                 Serial.println("Peers connected.");
             }
             break;
-        case STATE_REACT_TO_MESSAGE:
-            sevenSegments.showMessage("READ");
+        case STATE_WAIT_FOR_MESSAGE:
+            sevenSegments.showMessage("WAIT");
             if (communicator.isMessageAvailable()) {
                 communicator.read(&receivedMessage, sizeof(receivedMessage));
                 if (communicator.isLaser1AdjustmentInfo(receivedMessage)) {
@@ -141,6 +153,16 @@ void loopFinishDevice() {
                 } else if (communicator.isLaser2AdjustmentRequest(receivedMessage)) {
                     laserDetector.startLaserAdjustment();
                     currentState = STATE_LASER_2_ADJUSTMENT;
+                    changedStateMillis = millis();
+                } else if (communicator.isStateReadyRequest(receivedMessage)) {
+                    measuredTimeMillis = 0;
+                    currentState = STATE_READY;
+                    changedStateMillis = millis();
+                    laserDetector.ledOff();
+                } else if (communicator.isStateFinishRequest(receivedMessage)) {
+                    measuredTimeMillis = communicator.getFinishTime(receivedMessage);                    
+                    Serial.println(1.0 * measuredTimeMillis / 1000.0);
+                    currentState = STATE_FINISH;
                     changedStateMillis = millis();
                 }
             }
@@ -150,7 +172,8 @@ void loopFinishDevice() {
             if (communicator.isMessageAvailable()) {
                 communicator.read(&receivedMessage, sizeof(receivedMessage));
                 if (communicator.isLaser1AdjustedInfo(receivedMessage)) {
-                    currentState = STATE_REACT_TO_MESSAGE;
+                    Serial.println("Laser 1 adjusted.");
+                    currentState = STATE_WAIT_FOR_MESSAGE;
                     changedStateMillis = millis();
                 }
             }
@@ -158,8 +181,42 @@ void loopFinishDevice() {
         case STATE_LASER_2_ADJUSTMENT:
             sevenSegments.showMessage("LAS2");
             if (laserDetector.isLaserAdjusted()) {
-                currentState = STATE_REACT_TO_MESSAGE;
+                Serial.println("Laser 2 adjusted.");
+                currentState = STATE_WAIT_FOR_MESSAGE;
                 changedStateMillis = millis();
+                communicator.sendLaser2AdjustmentResponse();
+            }
+            break;
+        case STATE_READY:
+            sevenSegments.showTime(measuredTimeMillis);
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isStateRunRequest(receivedMessage)) {                    
+                    currentState = STATE_RUN;
+                    laserDetector.ledOn();
+                    changedStateMillis = millis();
+                    runStartMillis = millis();
+                }
+            }
+            break;
+        case STATE_RUN:
+            measuredTimeMillis = millis() - runStartMillis;
+            sevenSegments.showTime(measuredTimeMillis);
+            if (laserDetector.isSensorLow()) {
+                laserDetector.ledOff();
+                currentState = STATE_WAIT_FOR_MESSAGE;
+                changedStateMillis = millis();
+                communicator.sendLaser2Interrupted();
+            }
+            break;
+        case STATE_FINISH:
+            sevenSegments.showTime(measuredTimeMillis);
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isStateFinishEndRequest(receivedMessage)) {
+                    currentState = STATE_WAIT_FOR_MESSAGE;
+                    changedStateMillis = millis();
+                }
             }
             break;
         default:
@@ -183,41 +240,10 @@ boolean isFinishDevice() {
     return DEVICE_TYPE == 1;
 }
 
-void loop() {
+void loop() {   
     if (isStartDevice()) {
         loopStartDevice();
     } else {
         loopFinishDevice();
     }
-
-    // sevenSegments.showTime(millis());
-    // if (laserDetector.isObjectDetected()) {
-    //   sevenSegments.showMessage("EMPT");
-    // } else {
-    //   sevenSegments.showMessage("OBJ");
-    // }
-
-    //  Serial.println("111");
-    // // communicator.send("X");
-    // if (communicator.isMessageAvailable()) {
-    //   Serial.println("xxx");
-    //   char text[32] = "";
-    //   communicator.read(&text, strlen(text));
-    //   Serial.println(text);
-    // }
-
-    // Serial.println("1");
-    // delay(1000);
 }
-
-// boolean isMessageFromPeerAvailable() {
-
-// }
-
-// char* receiveMessageFromPeer() {
-
-// }
-
-// void sendMessageToPeer(String message) {
-
-// }

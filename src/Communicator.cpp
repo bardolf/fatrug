@@ -14,10 +14,15 @@
 #define LASER_1_ADJUSTED_INFO "LASER1_ADJ_RES"
 #define LASER_2_ADJUSTMENT_REQUEST "LASER2_REQ"
 #define LASER_2_ADJUSTMENT_RESPONSE "LASER2_ADJUSTED"
+#define STATE_READY_REQUEST "READY_REQ"
+#define STATE_RUN_REQUEST "RUN_REQ"
+#define STATE_FINISH_REQUEST "FIN_R"
+#define STATE_FINISH_END_REQUEST "FIN_E_REQ"
+#define LASER_2_INTERRUPTED "LASER2_INTR"
 
 RF24 radio(7, 8);  // CE, CSN
 const byte adresss[][6] = {"00001", "00002"};
-const byte channel = 125;
+const byte channel = 90;
 char buffer[16];
 
 Communicator::Communicator(boolean startDevice) {
@@ -40,19 +45,21 @@ void Communicator::init() {
         radio.openReadingPipe(1, adresss[1]);
     }
 
-    radio.setAutoAck(false);
-    radio.setRetries(2, 1);
+    radio.setAutoAck(true);    
+    radio.setRetries(10, 2);
     radio.setPayloadSize(16);
     radio.setPALevel(RF24_PA_MAX);
-    radio.setDataRate(RF24_2MBPS);
+    radio.setDataRate(RF24_250KBPS);
     radio.setChannel(channel);
     radio.startListening();
+    delayMicroseconds(100);
 }
 
 void Communicator::send(const char* message) {
     radio.stopListening();
-    radio.write(message, strlen(message));
+    radio.write(message, strlen(message));    
     radio.startListening();
+    delayMicroseconds(100);
 }
 
 boolean Communicator::isMessageAvailable() {
@@ -138,4 +145,52 @@ void Communicator::sendLaser2AdjustmentResponse() {
 
 boolean Communicator::isLaser2AdjustmentResponse(const char* msg) {
     return strcmp(msg, LASER_2_ADJUSTMENT_RESPONSE) == 0;
+}
+
+void Communicator::sendStateReadyRequest() {
+    send(STATE_READY_REQUEST);
+}
+
+boolean Communicator::isStateReadyRequest(const char* msg) {
+    return strcmp(msg, STATE_READY_REQUEST) == 0;
+}
+
+void Communicator::sendStateRunRequest() {
+    send(STATE_RUN_REQUEST);
+}
+
+boolean Communicator::isStateRunRequest(const char* msg) {
+    return strcmp(msg, STATE_RUN_REQUEST) == 0;
+}
+
+void Communicator::sendStateFinishRequest(long finishTime) {
+    char buffer[16];
+    sprintf(buffer, "%s%08ld", STATE_FINISH_REQUEST, finishTime);    
+    send(buffer);
+}
+
+boolean Communicator::isStateFinishRequest(const char* msg) {    
+    return strncmp(msg, STATE_FINISH_REQUEST, strlen(STATE_FINISH_REQUEST)) == 0;
+}
+
+long Communicator::getFinishTime(const char* msg) {    
+    char sub[9];
+    memcpy(sub, &msg[strlen(STATE_FINISH_REQUEST)], 8);    
+    return atol(sub);
+}
+
+void Communicator::sendStateFinishEndRequest() {
+    send(STATE_FINISH_END_REQUEST);
+}
+
+boolean Communicator::isStateFinishEndRequest(const char* msg) {
+    return strcmp(msg, STATE_FINISH_END_REQUEST) == 0;
+}
+
+void Communicator::sendLaser2Interrupted() {
+    send(LASER_2_INTERRUPTED);
+}
+
+boolean Communicator::isLaser2Interrupted(const char* msg) {
+    return strcmp(msg, LASER_2_INTERRUPTED) == 0;
 }

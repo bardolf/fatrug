@@ -97,12 +97,12 @@ void SevenSegments::showMessage(const char* message) {
     display(buffer, 0);
 }
 
-void SevenSegments::showTime(unsigned long millis) {
+void SevenSegments::showTime(unsigned long millis) {    
     byte buffer[4];
-    buffer[3] = digit[millis % 10];
+    buffer[3] = digit[(millis / 10) % 10];
     buffer[2] = digit[(millis / 100) % 10];
     buffer[1] = digit[(millis / 1000) % 10];
-    buffer[0] = digit[(millis / 10000) % 10];
+    buffer[0] = digit[(millis / 10000) % 10];    
     display(buffer, DOT2);
 }
 

@@ -3,20 +3,25 @@
 title Finish Device
 
 state "STATE_PEERS_CONNECTING" as connection
-state "STATE_REACT_TO_MESSAGE" as react
+state "STATE_WAIT_FOR_MESSAGE" as wait
 state "STATE_LASER_1_ADJUSTMENT" as laser1
 state "STATE_LASER_2_ADJUSTMENT" as laser2
-state "STATE_STOPWATCH" as stopwatch
+state "STATE_READY" as ready
+state "STATE_RUN" as run
+state "STATE_FINISH" as finish
 state "STATE_PROCESS_MESSAGE" as process
 
 [*] --> connection
-connection --> react : communication\nestablished
-react --> process : msg available
+connection --> wait : communication\nestablished
+wait --> process : msg not available
+wait -> wait : msg available
 process --> laser1 : msg (laser 1\nadjustment)
-process --> laser2 : msg(laser 2\nadjustment requested)
-process --> stopwatch : msg(stopwatch\nrequested)
-laser1 --> react : msg(laser 1\nadjusted)
-laser2 --> react : laser 2\nadjusted
-stopwatch --> react : laser 2\ninterrupted
-
+laser1 -> wait : msg (laser 1\nadjusted)
+process --> laser2 : msg (laser 2\nadjustment requested)
+laser2 -> wait : laser 2\nadjusted
+process --> ready : msg (ready\nrequested)
+ready --> run : msg (run\nrequested)
+run -> wait : laser 2\ninterrupted
+process --> finish : msg (show time\nrequested)
+finish -> wait : msg (stop show\ntime requested)
 @enduml

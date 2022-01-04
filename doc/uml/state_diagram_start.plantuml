@@ -16,7 +16,7 @@ laser2 --> ready : msg (laser2 ok)
 ready --> laser: laser 1 unavailable
 ready --> run : laser 1\ninterrupted
 ready --> connection : connection lost
-run --> finish : msg from \nfinish device
+run --> finish : msg\n(finish request)
 run --> ready : button\npressed
 finish --> ready : timeout
 finish --> ready : button\npressed
