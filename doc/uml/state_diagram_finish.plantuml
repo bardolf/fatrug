@@ -22,6 +22,7 @@ laser2 -> wait : laser 2\nadjusted
 process --> ready : msg (ready\nrequested)
 ready --> run : msg (run\nrequested)
 run -> wait : laser 2\ninterrupted
+run -> connection : msg (establish start)
 process --> finish : msg (show time\nrequested)
 finish -> wait : msg (stop show\ntime requested)
 @enduml

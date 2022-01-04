@@ -1,5 +1,5 @@
 #include "SevenSegments.h"
-
+#define DOT0 0
 #define DOT1 1
 #define DOT2 2
 #define DOT3 4
@@ -73,6 +73,8 @@ const byte chr[4] = {
     0b00000010,
     0b00000001};
 
+byte displayBuffer[4];
+
 SevenSegments::SevenSegments(byte sclk, byte rclk, byte dio) {
     _sclk = sclk;
     _rclk = rclk;
@@ -82,28 +84,38 @@ SevenSegments::SevenSegments(byte sclk, byte rclk, byte dio) {
 void SevenSegments::init() {
     pinMode(_rclk, OUTPUT);
     pinMode(_sclk, OUTPUT);
-    pinMode(_dio, OUTPUT);    
+    pinMode(_dio, OUTPUT);
 }
 
 void SevenSegments::showMessage(const char* message) {
-    byte buffer[4];    
-    for (int i = 0; i < 4; i++) {
+    for (uint8_t i = 0; i < 4; i++) {
         if (i >= strlen(message)) {
-            buffer[i] = letter[43];
+            displayBuffer[i] = letter[43];
         } else {
-            buffer[i] = letter[message[i] - '0'];
-        }        
+            displayBuffer[i] = letter[message[i] - '0'];
+        }
     }
-    display(buffer, 0);
+    display(displayBuffer, 0);
 }
 
-void SevenSegments::showTime(unsigned long millis) {    
-    byte buffer[4];
-    buffer[3] = digit[(millis / 10) % 10];
-    buffer[2] = digit[(millis / 100) % 10];
-    buffer[1] = digit[(millis / 1000) % 10];
-    buffer[0] = digit[(millis / 10000) % 10];    
-    display(buffer, DOT2);
+void SevenSegments::showTime(unsigned long millis) {
+    int divider = 1;
+    byte dot = DOT0;
+    if (millis <= 99999) {
+        divider = 10;
+        dot = DOT2;    
+    } else if (millis <= 999999) {
+        divider = 100;
+        dot = DOT3;
+    } else {
+        divider = 1000;
+        dot = DOT0;
+    }
+    displayBuffer[3] = digit[(millis / divider) % 10];
+    displayBuffer[2] = digit[(millis / divider / 10) % 10];
+    displayBuffer[1] = digit[(millis / divider / 100) % 10];
+    displayBuffer[0] = digit[(millis / divider / 1000) % 10];
+    display(displayBuffer, dot);
 }
 
 void SevenSegments::display(byte chars[4], byte dots) {

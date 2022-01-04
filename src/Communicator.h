@@ -13,6 +13,10 @@ class Communicator {
     boolean isCommunicationEstablished();
     long getLastMessageMillis();
 
+    void sendEstablishRequest();
+    boolean isEstablishRequest(const char* msg);
+    void sendEstablishResponse();
+    boolean isEstablishResponse(const char* msg); 
     void sendPingRequest();
     boolean isPingRequest(const char* msg);
     void sendPingResponse();

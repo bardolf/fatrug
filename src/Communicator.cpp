@@ -6,8 +6,8 @@
 // #include <printf.h>
 
 #define ESTABLISH_INTERVAL_MS 500
-#define ESTABLISH_START_MESSAGE "EST_START"
-#define ESTABLISH_FINISH_MESSAGE "EST_FINISH"
+#define ESTABLISH_REQUEST "EST_START"
+#define ESTABLISH_RESPONSE "EST_FINISH"
 #define PING_MESSAGE_REQUEST "PING"
 #define PING_MESSAGE_RESPONSE "PONG"
 #define LASER_1_ADJUSTMENT_INFO "LASER1_ADJ_REQ"
@@ -49,7 +49,7 @@ void Communicator::init() {
     radio.setRetries(10, 2);
     radio.setPayloadSize(16);
     radio.setPALevel(RF24_PA_MAX);
-    radio.setDataRate(RF24_250KBPS);
+    radio.setDataRate(RF24_1MBPS);
     radio.setChannel(channel);
     radio.startListening();
     delayMicroseconds(100);
@@ -79,24 +79,43 @@ boolean Communicator::isCommunicationEstablished() {
     if (_startDevice) {
         if ((millis() - _establishedMessageSentMillis) > ESTABLISH_INTERVAL_MS) {
             _establishedMessageSentMillis = millis();
-            send(ESTABLISH_START_MESSAGE);
+            sendEstablishRequest();
         }
         if (isMessageAvailable()) {
             read(&buffer, sizeof(buffer));
-            if (strcmp(buffer, ESTABLISH_FINISH_MESSAGE) == 0) {
-                return true;
-            }
+            return isEstablishResponse(buffer);
         }
     } else {
+        // reconnect
+        if ((millis() - _establishedMessageSentMillis) > ESTABLISH_INTERVAL_MS) {
+            _establishedMessageSentMillis = millis();
+            sendEstablishRequest();
+        }
         if (isMessageAvailable()) {
             read(&buffer, sizeof(buffer));
-            if (strcmp(buffer, ESTABLISH_START_MESSAGE) == 0) {
-                send(ESTABLISH_FINISH_MESSAGE);
+            if (isEstablishRequest(buffer)) {
+                sendEstablishResponse();
                 return true;
             }
         }
     }
     return false;
+}
+
+void Communicator::sendEstablishRequest() {
+    send(ESTABLISH_REQUEST);
+}
+
+boolean Communicator::isEstablishRequest(const char* msg) {
+    return strcmp(msg, ESTABLISH_REQUEST) == 0;
+}
+
+void Communicator::sendEstablishResponse() {
+    send(ESTABLISH_RESPONSE);
+}
+
+boolean Communicator::isEstablishResponse(const char* msg) {
+    return strcmp(msg, ESTABLISH_RESPONSE) == 0;
 }
 
 void Communicator::sendPingRequest() {

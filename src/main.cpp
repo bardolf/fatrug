@@ -5,7 +5,7 @@
 #include "LaserDetector.h"
 #include "SevenSegments.h"
 
-#define DEVICE_TYPE 0 // defines whether is it start (0) or finish (1) device
+#define DEVICE_TYPE 0  // defines whether is it start (0) or finish (1) device
 
 #define STATE_START 0
 #define STATE_LASER_1_ADJUSTMENT 1
@@ -15,7 +15,7 @@
 #define STATE_RUN 5
 #define STATE_FINISH 6
 #define STATE_WAIT_FOR_MESSAGE 7
-#define STATE_PROCESS_MESSAGE 8
+#define STATE_PROCESS_MESSAGE 8 
 #define STATE_CHECK_SENSORS 9
 
 /* HW CONFIGURATION */
@@ -27,8 +27,7 @@
 #define BUTTON_PIN 9
 
 /* TIME CONFIGURATION */
-#define PING_INTERVAL_MS 500
-#define UPDATE_LED_INTERVAL_MS 4
+#define PING_INTERVAL_MS 2000
 
 /* GLOBAL VARIABLES */
 unsigned int currentState = STATE_START;
@@ -76,6 +75,13 @@ void loopStartDevice() {
                 communicator.sendLaser1AdjustedInfo();
                 communicator.sendLaser2AdjustmentRequest();
             }
+             if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isEstablishRequest(receivedMessage)) {
+                    currentState = STATE_PEERS_CONNECTION;
+                    laserDetector.ledOff();
+                }
+            }
             break;
         case STATE_LASER_2_ADJUSTMENT:
             sevenSegments.showMessage("LAS2");
@@ -84,9 +90,14 @@ void loopStartDevice() {
                 if (communicator.isLaser2AdjustmentResponse(receivedMessage)) {
                     Serial.println("Laser 2 adjusted.");
                     currentState = STATE_READY;
+                    measuredTimeMillis = 0;
                     laserDetector.ledOn();
                     changedStateMillis = millis();
                     communicator.sendStateReadyRequest();
+                }
+                if (communicator.isEstablishRequest(receivedMessage)) {
+                    currentState = STATE_PEERS_CONNECTION;
+                    laserDetector.ledOff();
                 }
             }
             break;
@@ -99,6 +110,13 @@ void loopStartDevice() {
                 changedStateMillis = millis();
                 communicator.sendStateRunRequest();
             }
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isEstablishRequest(receivedMessage)) {
+                    currentState = STATE_PEERS_CONNECTION;
+                    laserDetector.ledOff();
+                }
+            }
             break;
         case STATE_RUN:
             measuredTimeMillis = millis() - runStartMillis;
@@ -106,10 +124,20 @@ void loopStartDevice() {
             if (communicator.isMessageAvailable()) {
                 communicator.read(&receivedMessage, sizeof(receivedMessage));
                 if (communicator.isLaser2Interrupted(receivedMessage)) {
-                    currentState = STATE_FINISH;                    
+                    currentState = STATE_FINISH;
                     changedStateMillis = millis();
                     communicator.sendStateFinishRequest(measuredTimeMillis);
+                } else if (communicator.isEstablishRequest(receivedMessage)) {
+                    currentState = STATE_PEERS_CONNECTION;
+                    laserDetector.ledOff();
                 }
+            }
+            if (button.isPressed()) {
+                currentState = STATE_READY;
+                measuredTimeMillis = 0;
+                changedStateMillis = millis();
+                laserDetector.ledOn();
+                communicator.sendStateReadyRequest();
             }
             break;
         case STATE_FINISH:
@@ -121,6 +149,13 @@ void loopStartDevice() {
                 changedStateMillis = millis();
                 communicator.sendStateFinishEndRequest();
                 communicator.sendStateReadyRequest();
+            }
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isEstablishRequest(receivedMessage)) {
+                    currentState = STATE_PEERS_CONNECTION;
+                    laserDetector.ledOff();
+                }
             }
             break;
         default:
@@ -160,7 +195,7 @@ void loopFinishDevice() {
                     changedStateMillis = millis();
                     laserDetector.ledOff();
                 } else if (communicator.isStateFinishRequest(receivedMessage)) {
-                    measuredTimeMillis = communicator.getFinishTime(receivedMessage);                    
+                    measuredTimeMillis = communicator.getFinishTime(receivedMessage);
                     Serial.println(1.0 * measuredTimeMillis / 1000.0);
                     currentState = STATE_FINISH;
                     changedStateMillis = millis();
@@ -175,6 +210,10 @@ void loopFinishDevice() {
                     Serial.println("Laser 1 adjusted.");
                     currentState = STATE_WAIT_FOR_MESSAGE;
                     changedStateMillis = millis();
+                } else if (communicator.isEstablishRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    currentState = STATE_PEERS_CONNECTION;
+                    changedStateMillis = millis();
                 }
             }
             break;
@@ -186,16 +225,28 @@ void loopFinishDevice() {
                 changedStateMillis = millis();
                 communicator.sendLaser2AdjustmentResponse();
             }
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isEstablishRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    currentState = STATE_PEERS_CONNECTION;
+                    changedStateMillis = millis();
+                }
+            }
             break;
         case STATE_READY:
             sevenSegments.showTime(measuredTimeMillis);
             if (communicator.isMessageAvailable()) {
                 communicator.read(&receivedMessage, sizeof(receivedMessage));
-                if (communicator.isStateRunRequest(receivedMessage)) {                    
+                if (communicator.isStateRunRequest(receivedMessage)) {
                     currentState = STATE_RUN;
                     laserDetector.ledOn();
                     changedStateMillis = millis();
                     runStartMillis = millis();
+                } else if (communicator.isEstablishRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    currentState = STATE_PEERS_CONNECTION;
+                    changedStateMillis = millis();
                 }
             }
             break;
@@ -203,10 +254,22 @@ void loopFinishDevice() {
             measuredTimeMillis = millis() - runStartMillis;
             sevenSegments.showTime(measuredTimeMillis);
             if (laserDetector.isSensorLow()) {
+                communicator.sendLaser2Interrupted();
                 laserDetector.ledOff();
                 currentState = STATE_WAIT_FOR_MESSAGE;
                 changedStateMillis = millis();
-                communicator.sendLaser2Interrupted();
+            }
+            if (communicator.isMessageAvailable()) {
+                communicator.read(&receivedMessage, sizeof(receivedMessage));
+                if (communicator.isEstablishRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    currentState = STATE_PEERS_CONNECTION;
+                    changedStateMillis = millis();
+                } else if (communicator.isStateReadyRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    measuredTimeMillis = 0;
+                    currentState = STATE_READY;
+                }
             }
             break;
         case STATE_FINISH:
@@ -215,6 +278,10 @@ void loopFinishDevice() {
                 communicator.read(&receivedMessage, sizeof(receivedMessage));
                 if (communicator.isStateFinishEndRequest(receivedMessage)) {
                     currentState = STATE_WAIT_FOR_MESSAGE;
+                    changedStateMillis = millis();
+                } else if (communicator.isEstablishRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    currentState = STATE_PEERS_CONNECTION;
                     changedStateMillis = millis();
                 }
             }
@@ -240,7 +307,7 @@ boolean isFinishDevice() {
     return DEVICE_TYPE == 1;
 }
 
-void loop() {   
+void loop() {
     if (isStartDevice()) {
         loopStartDevice();
     } else {
