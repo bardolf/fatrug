@@ -22,7 +22,7 @@
 
 RF24 radio(7, 8);  // CE, CSN
 const byte adresss[][6] = {"00001", "00002"};
-const byte channel = 90;
+const byte channel = 120;
 char buffer[16];
 
 Communicator::Communicator(boolean startDevice) {
@@ -46,12 +46,12 @@ void Communicator::init() {
     }
 
     radio.setAutoAck(true);    
-    radio.setRetries(10, 2);
+    radio.setRetries(3, 1);
     radio.setPayloadSize(16);
-    radio.setPALevel(RF24_PA_MAX);
-    radio.setDataRate(RF24_1MBPS);
+    radio.setPALevel(RF24_PA_MAX, 1);
+    radio.setDataRate(RF24_250KBPS);
     radio.setChannel(channel);
-    radio.startListening();
+    radio.startListening();    
     delayMicroseconds(100);
 }
 

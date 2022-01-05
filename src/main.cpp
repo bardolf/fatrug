@@ -199,6 +199,10 @@ void loopFinishDevice() {
                     Serial.println(1.0 * measuredTimeMillis / 1000.0);
                     currentState = STATE_FINISH;
                     changedStateMillis = millis();
+                } else if (communicator.isEstablishRequest(receivedMessage)) {
+                    laserDetector.ledOff();
+                    currentState = STATE_PEERS_CONNECTION;
+                    changedStateMillis = millis();
                 }
             }
             break;
@@ -254,8 +258,8 @@ void loopFinishDevice() {
             measuredTimeMillis = millis() - runStartMillis;
             sevenSegments.showTime(measuredTimeMillis);
             if (laserDetector.isSensorLow()) {
-                communicator.sendLaser2Interrupted();
                 laserDetector.ledOff();
+                communicator.sendLaser2Interrupted();
                 currentState = STATE_WAIT_FOR_MESSAGE;
                 changedStateMillis = millis();
             }
