@@ -5,7 +5,9 @@
 
 ## State Diagram
 
-![State diagram](/doc/img/state_diagram.png)
+![State diagram](/doc/img/state_diagram_start.png)
+
+![State diagram](/doc/img/state_diagram_finish.png)
 
 ## Photos
 
