@@ -15,6 +15,7 @@ start
         else (no) 
             if (is after ack timeout) then (yes) 
                 :set state to (re)connection;
+                :set waiting for ack=false;
                 :return true;
                 stop
             endif

@@ -3,7 +3,10 @@
 #include <RF24.h>
 #include <SPI.h>
 #include <nRF24L01.h>
+#include <DebugLog.h>
 // #include <printf.h>
+
+// #define ACK "ACK\0"
 
 #define ESTABLISH_INTERVAL_MS 1000
 #define ESTABLISH_REQUEST "EST_START"
@@ -38,10 +41,10 @@ void Communicator::init() {
     // delay(1000);
 
     radio.setAutoAck(false);
-    radio.setRetries(1, 1);
-    radio.setPayloadSize(sizeof(Payload));
+    radio.setRetries(0, 1);
+    radio.setPayloadSize(sizeof(Message));
     radio.setPALevel(RF24_PA_MAX);
-    radio.setDataRate(RF24_250KBPS);
+    radio.setDataRate(RF24_1MBPS);
     radio.setChannel(channel);
     
     if (_startDevice) {
@@ -58,20 +61,27 @@ boolean Communicator::isMessageAvailable() {
     return radio.available();
 }
 
-void Communicator::read(Payload payload) {    
-    radio.read(&payload, sizeof(payload));    
+void Communicator::read(Message *message) {  
+    radio.read(message, sizeof(Message));   
+    LOG_INFO(message->text); 
 }
 
-void Communicator::send(Payload payload) {    
+void Communicator::send(Message *message) {    
     radio.stopListening();
-    boolean success = radio.write(&payload, sizeof(payload));    
+    radio.write(message, sizeof(Message));    
     radio.startListening();    
 }
 
-long Communicator::getLastMessageMillis() {
-    return _lastMessageReceivedMillis;
-}
+// void Communicator::sendAck(uint8_t counter) { 
+//     Message message;
+//     message.counter = counter;
+//     memcpy(message.text, ACK, strlen(ACK));
+//     send(&message);
+// }
 
+// boolean Communicator::isAck(Message *message) { 
+//     return strcmp(message->text, ACK) == 0;
+// }
 
 
 // boolean Communicator::isCommunicationEstablished() {
@@ -102,14 +112,14 @@ long Communicator::getLastMessageMillis() {
 // }
 
 void Communicator::sendEstablishRequest(uint8_t counter) {
-    Payload payload;
-    payload.counter = counter;
-    memcpy(payload.message, ESTABLISH_REQUEST, strlen(ESTABLISH_REQUEST));
-    send(payload);
+    Message message;
+    message.counter = counter;
+    memcpy(message.text, ESTABLISH_REQUEST, strlen(ESTABLISH_REQUEST));
+    send(&message);
 }
 
-boolean Communicator::isEstablishRequest(Payload payload) {
-    return strcmp(payload.message, ESTABLISH_REQUEST) == 0;
+boolean Communicator::isEstablishRequest(Message message) {
+    return strcmp(message.text, ESTABLISH_REQUEST) == 0;
 }
 
 // void Communicator::sendEstablishResponse() {

@@ -3,9 +3,9 @@
 
 #include <Arduino.h>
 
-struct Payload {
+struct Message {
   uint8_t counter;
-  char message[16];
+  char text[16];
 };
 
 class Communicator {
@@ -13,13 +13,18 @@ class Communicator {
     Communicator(boolean startDevice);
     void init();
     boolean isMessageAvailable();
-    void read(Payload payload);
-    void send(Payload payload);
+    void read(Message *message);
+    void send(Message *message);
+    
+    // void sendAck(uint8_t counter);
+    // boolean isAck(Message *message);
+
+
     boolean isCommunicationEstablished();
-    long getLastMessageMillis();
+    
 
     void sendEstablishRequest(uint8_t counter);
-    boolean isEstablishRequest(Payload payload);
+    boolean isEstablishRequest(Message message);
     // void sendEstablishResponse();
     // boolean isEstablishResponse(const char* msg); 
     // void sendPingRequest();
@@ -50,8 +55,7 @@ class Communicator {
 
    private:
     boolean _startDevice;
-    long _establishedMessageSentMillis;
-    long _lastMessageReceivedMillis;
+    long _establishedMessageSentMillis;    
 };
 
 #endif
