@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
-#define DEBUGLOG_DISABLE_LOG     //uncomment for disabling the log
+#define DEBUGLOG_DISABLE_LOG  // uncomment for disabling the log
 #include <DebugLog.h>
 
 #include "Button.h"
@@ -31,7 +31,7 @@
 
 /* TIME CONFIGURATION */
 #define ACK_REPETITION_MICROS 30000
-#define ACK_TIMEOUT_MICROS 300000
+#define ACK_TIMEOUT_MICROS 500000
 
 /* MESSAGES */
 #define MSG_ACK "ACK"
@@ -163,7 +163,7 @@ void loopStartDevice() {
             measuredTimeMillis = millis() - runStartMillis;
             sevenSegments.showTime(measuredTimeMillis);
             if (unprocessedMessage) {
-                if (isLaser2InterrupedtMessage(receivedMessage)) {                    
+                if (isLaser2InterrupedtMessage(receivedMessage)) {
                     currentState = STATE_FINISH;
                     sprintf(&stateFinishRequestMessage->text[strlen(MSG_STATE_FINISH_REQUEST)], "%08ld", measuredTimeMillis);
                     sendMessage(stateFinishRequestMessage);
@@ -198,8 +198,8 @@ void loopFinishDevice() {
             sevenSegments.showMessage("STAR");
             btSerial.println("Start");
             btSerial.println("Peers connecting...");
-            sendMessage(connectionRequestMessage);
-            currentState = STATE_CONNECTION;            
+            // sendMessage(connectionRequestMessage);
+            currentState = STATE_CONNECTION;
             break;
         case STATE_CONNECTION:
             sevenSegments.showMessage("CONN");
@@ -297,6 +297,10 @@ void loopFinishDevice() {
     }
 }
 
+static boolean isStartDevice() {
+    return DEVICE_TYPE == 0;
+}
+
 void loop() {
     if (!processCommunication()) {
         if (currentState == STATE_CONNECTION) {
@@ -304,7 +308,7 @@ void loop() {
         }
         return;
     }
-    if (DEVICE_TYPE == 0) {
+    if (isStartDevice()) {
         loopStartDevice();
     } else {
         loopFinishDevice();
@@ -320,7 +324,9 @@ boolean processCommunication() {
                 LOG_DEBUG(millis(), "ack received");
                 waitingForAck = false;
             } else {
-                LOG_WARN(millis(), "waiting for ack, different message received", receivedMessage->counter, receivedMessage->text);
+                LOG_WARN(millis(), "waiting for ack, different message received, just ack", receivedMessage->counter, receivedMessage->text);
+                communicator.send(ackMessage);
+                // waitingForAck = false;
             }
             return false;
         } else {
@@ -333,7 +339,7 @@ boolean processCommunication() {
                 waitingForAck = false;
                 return true;
             }
-            if ((micros() - messageResentMicros) > ACK_REPETITION_MICROS) {
+            if ((micros() - messageResentMicros) > ACK_REPETITION_MICROS && !isConnectionRequestMessage(sentMessage)) {
                 LOG_DEBUG(millis(), "resending a message, ack not received yet for", sentMessage->counter, sentMessage->text);
                 communicator.send(sentMessage);
                 messageResentMicros = micros();
@@ -360,7 +366,12 @@ boolean processCommunication() {
         if (isConnectionRequestMessage(receivedMessage)) {
             ackMessage->counter = lastSentCounter;
             communicator.send(ackMessage);
-            currentState = STATE_CONNECTION;
+            LOG_TRACE(millis(), "sending ack");
+            if (isStartDevice()) {
+                currentState = STATE_START;
+            } else {
+                currentState = STATE_CONNECTION;
+            }
             lastReceivedCounter = receivedMessage->counter;
             unprocessedMessage = true;
             return true;
@@ -368,6 +379,7 @@ boolean processCommunication() {
         if ((receivedMessage->counter > lastReceivedCounter) || (receivedMessage->counter < 5 && lastReceivedCounter > 250)) {
             ackMessage->counter = lastSentCounter;
             communicator.send(ackMessage);
+            LOG_TRACE(millis(), "sending ack");
             lastReceivedCounter = receivedMessage->counter;
             unprocessedMessage = true;
         } else {

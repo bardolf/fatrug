@@ -7,7 +7,7 @@
 // #include <printf.h>
 
 RF24 radio(7, 8);  // CE, CSN
-const byte adresss[][6] = {"00001", "00002"};
+const byte adresss[][6] = {"11111", "22222"};
 const byte channel = 120;
 char buffer[16];
 
@@ -25,7 +25,7 @@ void Communicator::init() {
     radio.setAutoAck(false);
     radio.setRetries(1, 1);
     radio.setPayloadSize(sizeof(Message));
-    radio.setPALevel(RF24_PA_MAX);
+    radio.setPALevel(RF24_PA_HIGH);
     radio.setDataRate(RF24_250KBPS);
     radio.setChannel(channel);
 
@@ -51,4 +51,5 @@ void Communicator::send(Message *message) {
     radio.stopListening();
     radio.write(message, sizeof(Message));
     radio.startListening();
+    delayMicroseconds(100);
 }
