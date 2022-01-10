@@ -8,7 +8,7 @@
 #include "LaserDetector.h"
 #include "SevenSegments.h"
 
-#define DEVICE_TYPE 0  // defines whether is it start (0) or finish (1) device
+#define DEVICE_TYPE 1 // defines whether is it start (0) or finish (1) device
 
 #define STATE_START 0
 #define STATE_LASER_1_ADJUSTMENT 1
@@ -198,7 +198,7 @@ void loopFinishDevice() {
             sevenSegments.showMessage("STAR");
             btSerial.println("Start");
             btSerial.println("Peers connecting...");
-            // sendMessage(connectionRequestMessage);
+            sendMessage(connectionRequestMessage);
             currentState = STATE_CONNECTION;
             break;
         case STATE_CONNECTION:

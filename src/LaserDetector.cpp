@@ -1,8 +1,9 @@
+#include <DebugLog.h>
 #include "LaserDetector.h"
 
 #define ADJUSTMENT_TIME_MS 3000
-#define THRESHOLD_SENSOR_HIGH 750
-#define THRESHOLD_SENSOR_LOW 400
+#define THRESHOLD_SENSOR_HIGH 150
+#define THRESHOLD_SENSOR_LOW 70
 
 LaserDetector::LaserDetector(byte out, byte in) {
     _out = out;
@@ -23,6 +24,7 @@ void LaserDetector::ledOff() {
 
 boolean LaserDetector::isSensorHigh() {
     unsigned int value = analogRead(_in);
+    // LOG_INFO(value);
     return value > THRESHOLD_SENSOR_HIGH;
 }
 
@@ -41,14 +43,14 @@ boolean LaserDetector::isLaserAdjusted() {
     }
     if (_adjustmentPhaseHigh) {
         digitalWrite(_out, HIGH);
-        delayMicroseconds(200);
+        delayMicroseconds(500);
         if (!isSensorHigh()) {
             _lastUnadjustedSensorMillis = millis();            
         }
         _adjustmentPhaseHigh = false;
     } else {
         digitalWrite(_out, LOW);
-        delayMicroseconds(200);
+        delayMicroseconds(500);
         if (!isSensorLow()) {
             _lastUnadjustedSensorMillis = millis();
         }
