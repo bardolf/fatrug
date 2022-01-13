@@ -1,0 +1,57 @@
+@startuml
+title boolean isCommunicationSolved()
+
+start
+
+' repeat
+
+    if (waiting for ack) then (yes)
+        if (message available) then (yes) 
+            if (is message ack) then (yes)
+                :set waiting for ack=false;
+            else  (no)
+                :throw message away;
+            endif
+        else (no) 
+            if (is after ack timeout) then (yes) 
+                :set state to (re)connection;
+                :set waiting for ack=false;
+                :return true;
+                stop
+            endif
+            if (is after repetition timeout) then (yes) 
+                :send the message again;                
+            else (no)                
+            endif                       
+        endif    
+        :return false;
+        stop    
+    else (no)
+        if (message to send) then (yes)
+            :send message;
+            :set waiting for ack=true;
+            :return false;
+            stop
+        else (no) 
+            if (message available) then (yes)
+                if (is message counter number > last message counter) then (yes)
+                    :set received message;
+                    :send ack;
+                else (no)
+                    :send ack;
+                endif
+
+                
+            endif
+        endif        
+        :return true;
+        stop
+    endif
+    
+
+
+' repeat while (true)
+
+
+@enduml
+
